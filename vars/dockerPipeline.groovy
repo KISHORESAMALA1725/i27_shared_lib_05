@@ -10,35 +10,14 @@ def call(Map pipelineParams) {
         }
 
         //  { choice(name: 'CHOICES', choices: ['one', 'two', 'three'], description: '') }
-        parameters {
-            choice(name: 'scanOnly',
-                choices: 'no\nyes',
-                description: "This will scan the application"
-            )
-            choice(name: 'buildOnly',
-                choices: 'no\nyes',
-                description: 'This will Only build the application'
-            )
-            choice(name: 'dockerPush',
-                choices: 'no\nyes',
-                description: 'This will trigger the app build, docker build and docker push'
-            )
-            choice(name: 'deployToDev',
-                choices: 'no\nyes',
-                description: 'This will Deploy the application to Dev env'
-            )
-            choice(name: 'deployToTest',
-                choices: 'no\nyes',
-                description: 'This will Deploy the application to Test env'
-            )
-            choice(name: 'deployToStage',
-                choices: 'no\nyes',
-                description: 'This will Deploy the application to Stage env'
-            )
-            choice(name: 'deployToProd',
-                choices: 'no\nyes',
-                description: 'This will Deploy the application to Prod env'
-            )
+    parameters {
+        choice(name: 'buildOnly', choices: 'no\nyes', description: 'Will do BUILD-ONLY')
+        choice(name: 'scanOnly', choices: 'no\nyes', description: 'Will perform SCAN-ONLY')
+        choice(name: 'dockerBuildAndPush', choices: 'no\nyes', description: 'Docker build and push')
+        choice(name: 'deploytodev', choices: 'no\nyes', description: 'Deploying to Dev')
+        choice(name: 'deploytotest', choices: 'no\nyes', description: 'Deploying to Test')
+        choice(name: 'deploytostage', choices: 'no\nyes', description: 'Deploying to Stage')
+        choice(name: 'deploytoprod', choices: 'no\nyes', description: 'Deploying to Prod')        
         }
         // tools configured in jenkins-master
         tools {
