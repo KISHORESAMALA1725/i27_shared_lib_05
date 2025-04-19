@@ -1,8 +1,6 @@
 import com.i27academy.builds.Docker;
 
 def call(Map pipelineParams) {
-     
-    // An instance of the class Docker is created
     Docker docker = new Docker(this)
         pipeline {
             agent {
@@ -185,7 +183,7 @@ def call(Map pipelineParams) {
                 }
             }    
         }   
-    }    
+}    
 
  
  /// methods ///
