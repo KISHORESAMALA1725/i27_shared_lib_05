@@ -25,9 +25,9 @@ def call(Map pipelineParams) {
             environment {
                 APPLICATION_NAME = "${pipelineParams.appName}"
                 DEV_HOST_PORT = "${pipelineParams.devHostPort}"
-                TEST_HOST_PORT = "${pipelineParams.tstHostPort}"
-                STAGR_HOST_PORT = "${pipelineParams.stgHostPort}"
-                PROD_HOST_PORT = "${pipelineParams.prdHostPort}"
+                TEST_HOST_PORT = "${pipelineParams.testHostPort}"
+                STAGE_HOST_PORT = "${pipelineParams.stageHostPort}"
+                PROD_HOST_PORT = "${pipelineParams.prodHostPort}"
                 CONT_PORT = "${pipelineParams.contPort}"
                 POM_VERSION = readMavenPom().getVersion()
                 POM_PACKAGING = readMavenPom().getPackaging()
