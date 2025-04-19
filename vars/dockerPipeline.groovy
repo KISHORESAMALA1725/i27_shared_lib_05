@@ -183,7 +183,12 @@ def call(Map pipelineParams) {
                 }
             }    
         }   
-def sendEmailNotification(String recipient, String subject, String body) {
+}    
+
+ 
+ /// methods ///
+
+ def sendEmailNotification(String recipient, String subject, String body) {
     mail (
         to: recipient,
         subject: subject,
@@ -241,8 +246,3 @@ def dockerDeploy(envDeploy, hostPort, contPort) {
         }      
     }
 }
-
-}    
-
- 
- /// methods ///
