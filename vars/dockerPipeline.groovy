@@ -1,276 +1,235 @@
-import com.i27academy.builds.Docker;
+pipeline {
+    agent {
+        label 'k8s-slave'
+    }
 
-def call(Map pipelineParams) {  
-    Docker docker = new Docker(this)
-    pipeline {
-        agent {
-            label 'k8s-slave'
-        }
+    tools {
+        maven 'maven-3.8.8'
+        jdk 'jdk-17'
+    }
 
-        //  { choice(name: 'CHOICES', choices: ['one', 'two', 'three'], description: '') }
     parameters {
         choice(name: 'buildOnly', choices: 'no\nyes', description: 'Will do BUILD-ONLY')
         choice(name: 'scanOnly', choices: 'no\nyes', description: 'Will perform SCAN-ONLY')
-        choice(name: 'dockerPush', choices: 'no\nyes', description: 'Docker build and push')
+        choice(name: 'dockerBuildAndPush', choices: 'no\nyes', description: 'Docker build and push')
         choice(name: 'deploytodev', choices: 'no\nyes', description: 'Deploying to Dev')
         choice(name: 'deploytotest', choices: 'no\nyes', description: 'Deploying to Test')
         choice(name: 'deploytostage', choices: 'no\nyes', description: 'Deploying to Stage')
         choice(name: 'deploytoprod', choices: 'no\nyes', description: 'Deploying to Prod')        
-        }
-        // tools configured in jenkins-master
-        tools {
-            maven 'maven-3.8.8'
-            jdk 'jdk-17'
-        }
-        environment {
-            APPLICATION_NAME = "${pipelineParams.appName}"
-            // the below are hostports
-            DEV_HOST_PORT = "${pipelineParams.devHostPort}"
-            TST_HOST_PORT = "${pipelineParams.tstHostPort}"
-            STG__HOST_PORT = "${pipelineParams.stgHostPort}"
-            PROD__HOST_PORT = "${pipelineParams.prdHostPort}"
+    }
 
-            // the below are container ports
-            CONT_PORT = "${pipelineParams.contPort}"
-            POM_VERSION = readMavenPom().getVersion() 
-            POM_PACKAGING = readMavenPom().getPackaging()
-            DOCKER_HUB = "docker.io/kishoresamala84"
-            DOCKER_CREDS = credentials('kishoresamala84_docker_creds')
-            DOCKER_VM = '34.21.68.255'
-        }
+    environment {
+        APPLICATION_NAME = '"${pipelineParams.appName}"'
+        POM_VERSION = readMavenPom().getVersion()
+        POM_PACKAGING = readMavenPom().getPackaging()
+        DOCKER_HUB = "docker.io/kishoresamala84"
+        DOCKER_CREDS = credentials('kishoresamala84_docker_creds')
+        DOCKER_VM = '34.21.68.255'
+    }
 
-        stages {
-            stage ('Build'){
-                when {
-                    anyOf {
-                        expression {
-                            params.dockerPush == 'yes'
-                            params.buildOnly == 'yes'
-                        }
+    stages {
+        stage ('BUILD_STAGE') {
+            when {
+                anyOf {
+                    expression {
+                        params.scanOnly == 'yes'
+                        params.buildOnly =='yes'
                     }
                 }
-                // This is Where Build for Eureka application happens
-                steps {
-                    script{
-                        docker.buildApp("${env.APPLICATION_NAME}")
-                    }
-                    // echo "Building ${env.APPLICATION_NAME} Application"
-                    // sh 'mvn clean package -DskipTests=true'
-                    // // mvn clean package -DskipTests=true
-                    // // mvn clean package -Dmaven.test.skip=true
-                    // archive 'target/*.jar'
+            }            
+            steps {
+                script{
+                    buildApp("${env.APPLICATION_NAME}")
                 }
             }
-            // stage ('Unit Tests'){
-            //     steps {
-            //         echo "****************** Performing Unit tests for ${env.APPLICATION_NAME} Application ******************"
-            //         sh 'mvn test'
-            //     }
-            // }
+        }        
 
-            stage ('SonarQube'){
-                when {
-                    anyOf {
-                        expression {
-                            params.dockerPush == 'yes'
-                            params.buildOnly == 'yes'
-                            params.scanOnly == 'yes'
-                        }
+        stage ('SONARQUBE_STAGE') {
+            when {
+                anyOf {
+                    expression {
+                        params.scanOnly == 'yes'
+                        params.buildOnly =='yes'
                     }
                 }
-                steps {
-                    echo "****************** Starting Sonar Scans with Quality Gates ******************"
-                    withSonarQubeEnv('SonarQube') { // SonarQube is the name we configured in Manage Jenkins > System > Sonarqube , it should match exactly, 
+            } 
+            steps {
+                echo "****************** Starting Sonar Scans with Quality Gates ******************"
+                withSonarQubeEnv('sonarqube'){
+                    script {
                         sh """
-                            mvn sonar:sonar \
-                                -Dsonar.projectKey=i27-eureka \
-                                -Dsonar.host.url=http://35.188.56.142:9000 \
-                                -Dsonar.login=sqa_577b1c8f0339303219f309fb46bb5f730ce1cf65
-                        """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=i27-eureka-05 \
+                        -Dsonar.host.url=http://35.188.226.250:9000 \
+                        -Dsonar.login=sqa_7d01297a6e4c6d1d7f64e2f1137dcbc2df213ec4    
+                        """                    
                     }
-                    timeout (time: 2, unit: 'MINUTES') { //NANOSECONDS, SECONDS, MINUTES, HOURS, DAYS
-                        waitForQualityGate abortPipeline: true
-                    }
-    
                 }
+                timeout (time: 2, unit: "MINUTES" ) {
+                    waitForQualityGate abortPipeline: true
+                }                
             }
-            stage ('BuildFormat') {
-                steps {
-                    script { 
-                        // Existing : i27-eureka-0.0.1-SNAPSHOT.jar
-                        // Destination: i27-eureka-buildnumber-branchname.packagin
-                      sh """
-                        echo "Testing JAR Source: i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING}"
-                        echo "Testing JAR Destination Format: i27-${env.APPLICATION_NAME}-${currentBuild.number}-${BRANCH_NAME}.${env.POM_PACKAGING}"
-                      """
+        }
 
-                    }
+        stage ('BUILD_FORMAT_STAGE') {
+            steps {
+                script {
+                    sh """
+                    echo "Source JAR_FORMAT i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING}"
+                    echo "Target JAR_FORMAT i27-${env.APPLICATION_NAME}-${BRANCH_NAME}-${currentBuild.number}.${env.POM_PACKAGING}"
+                    """
                 }
             }
-            stage ('Docker Build Push') {
-                when {
-                    anyOf {
-                        expression {
-                            params.dockerPush == 'yes'
-                        }
-                    }
-                }
-                steps {
-                    script {
-                        dockerBuildAndPush().call()
-                    }
-                }
-            }
-            stage ('Deploy to Dev Env'){
-                when {
-                    expression {
-                        params.deployToDev == 'yes'
-                    }
-                }
-                steps {
-                    script {
-                        imageValidation().call()
-                        dockerDeploy('dev', "${env.DEV_HOST_PORT}", "${env.CONT_PORT}").call()
-                    }
-    
-                }
-                // a mail should trigger based on the status
-                // Jenkins url should be sent as an a email.
-            }
-            stage ('Deploy to Test Env'){
-                when {
-                    expression {
-                        params.deployToTest == 'yes'
-                    }
-                }
-                steps {
-                    script {
-                        imageValidation().call()
-                        dockerDeploy('dev', "${env.TST_HOST_PORT}", "${env.CONT_PORT}").call()
-                    }
-                }
-            }
-            stage ('Deploy to Stage Env'){
-                when {
+        }
 
-                allOf {
-                    anyOf {
-                        expression {
-                            params.deployToStage == 'yes'
-                        }
-                    }
-                    anyOf {
-                        branch 'release/*'
-                        tag pattern: "v\\d{1,2}\\.\\d{1,2}\\.\\d{1,2}", comparator: "REGEXP" // v1.2.3 is the correct one, v123 is the wrong one
-                    }
-                }
-                }
-                steps {
-                    script {
-                        imageValidation().call()
-                        dockerDeploy('dev', "${env.STG__HOST_PORT}", "${env.CONT_PORT}").call()
-                        //dockerDeploy('stg', '7232', '8232').call()
-                    }
+        stage ('DOCKER_BUILD_AND_PUSH') {
+            when {
+                expression {
+                    params.dockerBuildAndPush == 'yes'
                 }
             }
-            stage ('Deploy to Prod Env'){
-                // when {
-                //     expression {
-                //         params.deployToProd == 'yes'
-                //     }
-                // }
-                when {
-                    allOf {
-                        anyOf {
-                            expression {
-                                params.deployToProd == 'yes'
-                            }
-                        }
-                        anyOf {
-                            tag pattern: "v\\d{1,2}\\.\\d{1,2}\\.\\d{1,2}", comparator: "REGEXP" // v1.2.3 is the correct one, v123 is the wrong one
-                        }
-                    }
+            steps {
+                script {
+                    dockerBuildAndPush().call()                    
                 }
-                steps {
-                    timeout(time: 300, unit: 'SECONDS'){ // SECONDS, MINUTES, HOURs
-                        input message: "Deploying to ${env.APPLICATION_NAME} to production ??", ok:'yes', submitter: 'sivasre,i27academy'
-                    }
+            }
+        }
 
-                    script {
-                        dockerDeploy('dev', "${env.PROD__HOST_PORT}", "${env.CONT_PORT}").call()
-                        //dockerDeploy('prd', '8232', '8232').call()
-                    }
+        stage ('DEPLOY_TO_DEV') {
+            when {
+                expression {
+                    params.deploytodev == 'yes'
+                }
+            }
+            steps {
+                script {
+                    imageValidation().call()
+                    dockerDeploy('dev', '5000', '8761').call()
+                }
+            }
+        }
+
+        stage ('DEPLOY_TO_TEST') {
+            when {
+                expression {
+                    params.deploytotest == 'yes'
+                }
+            }
+            steps {
+                script {
+                    imageValidation().call()
+                    dockerDeploy('test', '5001', '8761').call()
+                }
+            }
+        }
+
+        stage ('DEPLOY_TO_STAGE') {
+            when {
+                expression {
+                    params.deploytostage == 'yes'
+                }
+            }
+            steps {
+                script {
+                    imageValidation().call()
+                    dockerDeploy('stage', '5002', '8761').call()
+                }
+            }
+        }
+
+        stage ('DEPLOY_TO_PROD') {
+            when {
+                expression {
+                    params.deploytoprod == 'yes'
+                }
+            }
+            steps {
+                script {
+                    imageValidation().call()
+                    dockerDeploy('prod', '5003', '8761').call()
                 }
             }
         }
     }
+
+    post {
+        success{
+            script{                
+                def subject = "Success: Job is ${env.JOB_NAME} -- Build # is [${env.BUILD_NUMBER}] -- status: ${currentBuild.currentResult}"
+                def body =  "Build Number: ${env.BUILD_NUMBER} \n\n" +
+                        "status: ${currentBuild.currentResult} \n\n" +
+                        "Job URL: ${env.BUILD_URL}"
+                sendEmailNotification('kishorecloud.1725@gmail.com', subject, body)               
+            }            
+        }
+
+        failure{
+            script{                     
+                def subject = "Failure: Job is ${env.JOB_NAME} -- Build # is [${env.BUILD_NUMBER}] -- status: ${currentBuild.currentResult}"
+                def body =  "Build Number: -- ${env.BUILD_NUMBER} \n\n" +
+                        "status: -- ${currentBuild.currentResult} \n\n" +
+                        "Job URL: --> ${env.BUILD_URL}"
+                sendEmailNotification('kishorecloud.1725@gmail.com', subject, body)                      
+            }            
+        }
+    }    
 }
-// This Jenkins file is for Eureka Deployment
 
+def sendEmailNotification(String recipient, String subject, String body) {
+    mail (
+        to: recipient,
+        subject: subject,
+        body: body
+    )
+}
 
-
-//App Building
-def buildApp(){
+def buildApp() {
     return {
-        echo "Building ${env.APPLICATION_NAME} Application"
-        sh 'mvn clean package -DskipTests=true'
+            sh "mvn clean package -DskipTest=true"
+            archiveArtifacts 'target/*.jar'
     }
 }
 
-
-// imageValidation
 def imageValidation() {
     return {
-        println("******** Attemmpting to Pull the Docker Images *********")
+        echo "Trying to pull the image"
         try {
-            sh "docker pull ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT}"
-            println("************* Image is Pulled Succesfully ***********")
-        }
+            sh "docker pull ${env.DOCKER_HUB}/${env.APPLICATION_NAME}/${GIT_COMMIT}"
+            echo " Image pulled successfully"          
+            }
         catch(Exception e) {
             println("***** OOPS, the docker images with this tag is not available in the repo, so creating the image********")
             buildApp().call()
             dockerBuildAndPush().call()
         }
-
     }
 }
 
-// Method for Docker build and push 
-def dockerBuildAndPush(){
+def dockerBuildAndPush() {
     return {
-        echo "****************** Building Docker image ******************"
-        sh "cp ${WORKSPACE}/target/i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING} ./.cicd"
-        sh "docker build --no-cache --build-arg JAR_SOURCE=i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING} -t ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT} ./.cicd/"
-        echo "****************** Login to Docker Registry ******************"
-        sh "docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}"
-        echo "****************** Push Image to Docker Registry ******************"
-        sh "docker push ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT}"
+            script {
+                sh "cp ${WORKSPACE}/target/i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING} ./.cicd"
+                sh "docker build --no-cache --build-arg JAR_SOURCE=i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING} -t ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT} ./.cicd"
+                sh "docker login -u ${env.DOCKER_CREDS_USR} -p ${env.DOCKER_CREDS_PSW}"
+                sh "docker push ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT}"
+            }         
     }
 }
 
-// Method for Docker Deployment as containers in different env's
-def dockerDeploy(envDeploy, hostPort, contPort){
+def dockerDeploy(envDeploy, hostPort, contPort) {
     return {
-        echo "****************** Deploying to $envDeploy Environment  ******************"
-        withCredentials([usernamePassword(credentialsId: 'john_docker_vm_creds', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+        echo "********* Deploying to dev Environment **************"
+            withCredentials([usernamePassword(credentialsId: 'john_docker_vm_creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                 script {
                     try {
-                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker stop ${env.APPLICATION_NAME}-$envDeploy \""
-                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker rm ${env.APPLICATION_NAME}-$envDeploy \""
+                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker stop ${env.APPLICATION_NAME}-$envDeploy\""
+                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker rm ${env.APPLICATION_NAME}-$envDeploy\""
                     }
-                    catch(err){
-                        echo "Error Caught: $err"
+                    catch (err){
+                        echo "Caught Error: $err"
                     }
-                    sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker container run -dit -p $hostPort:$contPort --name ${env.APPLICATION_NAME}-$envDeploy ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT} \""
+                    sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker container run -dit -p $hostPort:$contPort --name ${env.APPLICATION_NAME}-$envDeploy ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT}\""
                 }
-        }   
-    }
-}
-
-
-// For eureka lets use the below port numbers
-// Container port will be 8232 only, only host port changes
-// dev: HostPort = 5232
-// tst: HostPort = 6232
-// stg: HostPort = 7232
-// prod: HostPort = 8232
+            }      
+        }
+     }
