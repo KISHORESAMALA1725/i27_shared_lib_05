@@ -68,7 +68,7 @@ def call(Map pipelineParams) {
                             script {
                                 sh """
                                 mvn sonar:sonar \
-                                -Dsonar.projectKey=i27-eureka-05 \
+                                -Dsonar.projectKey=i27-"${env.APPLICATION_NAME}"-05 \
                                 -Dsonar.host.url=http://35.188.226.250:9000 \
                                 -Dsonar.login=sqa_7d01297a6e4c6d1d7f64e2f1137dcbc2df213ec4    
                                 """                    
