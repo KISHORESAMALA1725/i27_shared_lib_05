@@ -1,8 +1,6 @@
 import com.i27academy.builds.Docker;
 
-def call(Map pipelineParams) {
-     
-    // An instance of the class Docker is created
+def call(Map pipelineParams) {  
     Docker docker = new Docker(this)
     pipeline {
         agent {
@@ -260,13 +258,13 @@ def dockerDeploy(envDeploy, hostPort, contPort){
         withCredentials([usernamePassword(credentialsId: 'john_docker_vm_creds', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
                 script {
                     try {
-                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@$DOCKER_VM \"docker stop ${env.APPLICATION_NAME}-$envDeploy \""
-                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@$DOCKER_VM \"docker rm ${env.APPLICATION_NAME}-$envDeploy \""
+                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker stop ${env.APPLICATION_NAME}-$envDeploy \""
+                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker rm ${env.APPLICATION_NAME}-$envDeploy \""
                     }
                     catch(err){
                         echo "Error Caught: $err"
                     }
-                    sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@$dev_ip \"docker container run -dit -p $hostPort:$contPort --name ${env.APPLICATION_NAME}-$envDeploy ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT} \""
+                    sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker container run -dit -p $hostPort:$contPort --name ${env.APPLICATION_NAME}-$envDeploy ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT} \""
                 }
         }   
     }
