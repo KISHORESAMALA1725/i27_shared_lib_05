@@ -164,22 +164,22 @@ def call(Map pipelineParams) {
             post {
                 success{
                     script{                
-                        def subject = "Success :=> Job is ${env.JOB_NAME} -- Build # is :=> [${env.BUILD_NUMBER}] -- status is :=> ${currentBuild.currentResult}"
-                        def body =  "Build Number: ${env.BUILD_NUMBER} \n\n" +
-                                "status: ${currentBuild.currentResult} \n\n" +
-                                "Job URL: ${env.BUILD_URL}"
+                        def subject = "Success :=> Job is ${env.JOB_NAME} <<>> Build # is :=> [${env.BUILD_NUMBER}] <<>> status is :=> ${currentBuild.currentResult}"
+                        def body =  "Build Number:=> ${env.BUILD_NUMBER} \n\n" +
+                                "status:=> ${currentBuild.currentResult} \n\n" +
+                                "Job URL:=> ${env.BUILD_URL}"
                         sendEmailNotification('kishorecloud.1725@gmail.com', subject, body)               
                     }            
                 }
 
                 failure{
-                    script{                     
-                        def subject = "Failure: Job is ${env.JOB_NAME} -- Build # is [${env.BUILD_NUMBER}] -- status: ${currentBuild.currentResult}"
-                        def body =  "Build Number: -- ${env.BUILD_NUMBER} \n\n" +
-                                "status: -- ${currentBuild.currentResult} \n\n" +
-                                "Job URL: --> ${env.BUILD_URL}"
-                        sendEmailNotification('kishorecloud.1725@gmail.com', subject, body)                      
-                    }            
+                    script{                
+                        def subject = "failure :=> Job is ${env.JOB_NAME} <<>> Build # is :=> [${env.BUILD_NUMBER}] <<>> status is :=> ${currentBuild.currentResult}"
+                        def body =  "Build Number:=> ${env.BUILD_NUMBER} \n\n" +
+                                "status:=> ${currentBuild.currentResult} \n\n" +
+                                "Job URL:=> ${env.BUILD_URL}"
+                        sendEmailNotification('kishorecloud.1725@gmail.com', subject, body)               
+                    }              
                 }
             }    
         }   
