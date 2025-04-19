@@ -186,64 +186,63 @@ def call(Map pipelineParams) {
             }    
         }
 
-def sendEmailNotification(String recipient, String subject, String body) {
-    mail (
-        to: recipient,
-        subject: subject,
-        body: body
-    )
-}
+        def sendEmailNotification(String recipient, String subject, String body) {
+            mail (
+                to: recipient,
+                subject: subject,
+                body: body
+            )
+        }
 
-def buildApp() {
-    return {
-            sh "mvn clean package -DskipTest=true"
-            archiveArtifacts 'target/*.jar'
-    }
-}
-
-def imageValidation() {
-    return {
-        echo "Trying to pull the image"
-        try {
-            sh "docker pull ${env.DOCKER_HUB}/${env.APPLICATION_NAME}/${GIT_COMMIT}"
-            echo " Image pulled successfully"          
+        def buildApp() {
+            return {
+                    sh "mvn clean package -DskipTest=true"
+                    archiveArtifacts 'target/*.jar'
             }
-        catch(Exception e) {
-            println("***** OOPS, the docker images with this tag is not available in the repo, so creating the image********")
-            buildApp().call()
-            dockerBuildAndPush().call()
         }
-    }
-}
 
-def dockerBuildAndPush() {
-    return {
-            script {
-                sh "cp ${WORKSPACE}/target/i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING} ./.cicd"
-                sh "docker build --no-cache --build-arg JAR_SOURCE=i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING} -t ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT} ./.cicd"
-                sh "docker login -u ${env.DOCKER_CREDS_USR} -p ${env.DOCKER_CREDS_PSW}"
-                sh "docker push ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT}"
-            }         
-    }
-}
-
-def dockerDeploy(envDeploy, hostPort, contPort) {
-
-    return {
-        echo "********* Deploying to dev Environment **************"
-            withCredentials([usernamePassword(credentialsId: 'john_docker_vm_creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                script {
-                    try {
-                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker stop ${env.APPLICATION_NAME}-$envDeploy\""
-                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker rm ${env.APPLICATION_NAME}-$envDeploy\""
+        def imageValidation() {
+            return {
+                echo "Trying to pull the image"
+                try {
+                    sh "docker pull ${env.DOCKER_HUB}/${env.APPLICATION_NAME}/${GIT_COMMIT}"
+                    echo " Image pulled successfully"          
                     }
-                    catch (err){
-                        echo "Caught Error: $err"
-                    }
-                    sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker container run -dit -p $hostPort:$contPort --name ${env.APPLICATION_NAME}-$envDeploy ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT}\""
+                catch(Exception e) {
+                    println("***** OOPS, the docker images with this tag is not available in the repo, so creating the image********")
+                    buildApp().call()
+                    dockerBuildAndPush().call()
                 }
-            }      
+            }
         }
+
+        def dockerBuildAndPush() {
+            return {
+                    script {
+                        sh "cp ${WORKSPACE}/target/i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING} ./.cicd"
+                        sh "docker build --no-cache --build-arg JAR_SOURCE=i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING} -t ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT} ./.cicd"
+                        sh "docker login -u ${env.DOCKER_CREDS_USR} -p ${env.DOCKER_CREDS_PSW}"
+                        sh "docker push ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT}"
+                    }         
+            }
+        }
+
+        def dockerDeploy(envDeploy, hostPort, contPort) {
+            return {
+            echo "********* Deploying to dev Environment **************"
+                withCredentials([usernamePassword(credentialsId: 'john_docker_vm_creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    script {
+                        try {
+                            sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker stop ${env.APPLICATION_NAME}-$envDeploy\""
+                            sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker rm ${env.APPLICATION_NAME}-$envDeploy\""
+                        }
+                        catch (err){
+                            echo "Caught Error: $err"
+                        }
+                        sh "sshpass -p '$PASSWORD' -v ssh -o StrictHostKeyChecking=no '$USERNAME'@'$DOCKER_VM' \"docker container run -dit -p $hostPort:$contPort --name ${env.APPLICATION_NAME}-$envDeploy ${env.DOCKER_HUB}/${env.APPLICATION_NAME}:${GIT_COMMIT}\""
+                    }
+                }      
+            }
      }
 
 }    
