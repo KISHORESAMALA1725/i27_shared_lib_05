@@ -57,9 +57,8 @@ def call(Map pipelineParams) {
             CONT_PORT = "${pipelineParams.contPort}"
             POM_VERSION = readMavenPom().getVersion() 
             POM_PACKAGING = readMavenPom().getPackaging()
-            DOCKER_HUB = "docker.io/kishoresamala84"
-            DOCKER_CREDS = credentials('kishoresamala84_docker_creds')
-            DOCKER_VM = '34.21.68.255'
+            DOCKER_HUB = "docker.io/i27devopsb5"
+            DOCKER_CREDS = credentials('dockerhub_creds') // username and password
         }
 
         stages {
@@ -278,7 +277,7 @@ def dockerBuildAndPush(){
 def dockerDeploy(envDeploy, hostPort, contPort){
     return {
         echo "****************** Deploying to $envDeploy Environment  ******************"
-        withCredentials([usernamePassword(credentialsId: 'john_docker_vm_creds', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+        withCredentials([usernamePassword(credentialsId: 'john_docker_vm_passwd', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
                 // some block
                 // we will communicate to the server
                 script {
