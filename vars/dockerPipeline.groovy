@@ -79,9 +79,6 @@ def call(Map pipelineParams) {
                     }
                 }
                 steps {
-                    // COde Quality needs to be implemented in this stage
-                    // Before we execute or write the code, make sure sonarqube-scanner plugin is installed.
-                    // sonar details are ben configured in the Manage Jenkins > system 
                     echo "****************** Starting Sonar Scans with Quality Gates ******************"
                     withSonarQubeEnv('SonarQube') { // SonarQube is the name we configured in Manage Jenkins > System > Sonarqube , it should match exactly, 
                         sh """
@@ -97,19 +94,19 @@ def call(Map pipelineParams) {
     
                 }
             }
-            // stage ('BuildFormat') {
-            //     steps {
-            //         script { 
-            //             // Existing : i27-eureka-0.0.1-SNAPSHOT.jar
-            //             // Destination: i27-eureka-buildnumber-branchname.packagin
-            //           sh """
-            //             echo "Testing JAR Source: i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING}"
-            //             echo "Testing JAR Destination Format: i27-${env.APPLICATION_NAME}-${currentBuild.number}-${BRANCH_NAME}.${env.POM_PACKAGING}"
-            //           """
+            stage ('BuildFormat') {
+                steps {
+                    script { 
+                        // Existing : i27-eureka-0.0.1-SNAPSHOT.jar
+                        // Destination: i27-eureka-buildnumber-branchname.packagin
+                      sh """
+                        echo "Testing JAR Source: i27-${env.APPLICATION_NAME}-${env.POM_VERSION}.${env.POM_PACKAGING}"
+                        echo "Testing JAR Destination Format: i27-${env.APPLICATION_NAME}-${currentBuild.number}-${BRANCH_NAME}.${env.POM_PACKAGING}"
+                      """
 
-            //         }
-            //     }
-            // }
+                    }
+                }
+            }
             stage ('Docker Build Push') {
                 when {
                     anyOf {
