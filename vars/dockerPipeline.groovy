@@ -164,7 +164,7 @@ def call(Map pipelineParams) {
             post {
                 success{
                     script{                
-                        def subject = "Success :=> Job is ${env.JOB_NAME} <<>> Build # is :=> [${env.BUILD_NUMBER}] <<>> status is :=> ${currentBuild.currentResult}"
+                        def subject = "Success :=> Job is [${env.JOB_NAME}] <<>> Build # is :=> [${env.BUILD_NUMBER}] <<>> status is :=> [${currentBuild.currentResult}]"
                         def body =  "Build Number:=> ${env.BUILD_NUMBER} \n\n" +
                                 "status:=> ${currentBuild.currentResult} \n\n" +
                                 "Job URL:=> ${env.BUILD_URL}"
@@ -174,7 +174,7 @@ def call(Map pipelineParams) {
 
                 failure{
                     script{                
-                        def subject = "failure :=> Job is ${env.JOB_NAME} <<>> Build # is :=> [${env.BUILD_NUMBER}] <<>> status is :=> ${currentBuild.currentResult}"
+                        def subject = "failure :=> Job is [${env.JOB_NAME}] <<>> Build # is :=> [${env.BUILD_NUMBER}] <<>> status is :=> [${currentBuild.currentResult}]"
                         def body =  "Build Number:=> ${env.BUILD_NUMBER} \n\n" +
                                 "status:=> ${currentBuild.currentResult} \n\n" +
                                 "Job URL:=> ${env.BUILD_URL}"
